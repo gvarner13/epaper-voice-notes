@@ -5,10 +5,11 @@
   "scripts": {
     "dev": "wrangler dev",
     "deploy": "wrangler deploy",
+    "deploy:validation": "wrangler deploy --config wrangler.validation.jsonc",
     "test": "vitest run",
     "types": "wrangler types",
     "typecheck": "npm run types && tsc --noEmit",
-    "check:bundle": "wrangler deploy --dry-run --outdir .bundle"
+    "check:bundle": "wrangler deploy --dry-run --outdir .bundle && wrangler deploy --dry-run --config wrangler.validation.jsonc --outdir .bundle/validation"
   },
   "devDependencies": {
     "@cloudflare/vitest-plugin": "1.4.0",

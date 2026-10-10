@@ -9,20 +9,32 @@ A SQLite Durable Object serializes recording claims and monthly usage reservatio
 The dedicated `epaper-voice-notes` Worker, private R2 bucket, Queue, SQLite ledger,
 audio-only R2 notification, and one-minute recovery Cron are deployed. All three
 random application secrets are installed. Anonymous API/unsigned audio access is
-rejected; device listing is denied; the separate reader can inspect empty state.
-Processing is **paused** (`PROCESSING_ENABLED=false`). No audio was uploaded during
-setup. Following the user connecting the device, v1.3 was flashed and all eight
-existing completed originals uploaded automatically. All eight are paused; reserved
-transcription usage remains zero. SD note preservation and one USB/original/cloud
-checksum comparison pass. The user's subsequent physical BOOT recording test saved
-and uploaded `VN000009.WAV` (10.368 s); all nine originals are now paused with zero
-reserved transcription usage. Its complete USB payload matches the cloud checksum,
-although the USB end-marker acknowledgment timed out. The user confirms the screen
-looks good; transcription quality and independent audio intelligibility remain
-unverified. Previous feasibility resources/evidence remain untouched.
+rejected; device listing is denied; the separate reader can inspect processing state.
+Processing is **enabled** (`PROCESSING_ENABLED=true`). The user created gateway
+`epaper-voice-notes` and confirmed $20 of credits. Five synthetic Grok tests passed in
+an isolated deployment of this same source before enabling personal-note processing.
+The dense 30-minute sample preserved all 60 checkpoints and 4,740 normalized tokens.
+All nine uploaded originals now have ready Markdown files, one attempt each,
+111.424 reserved production audio seconds. Downloads are in ignored `transcripts/`.
+Device status reports nine uploaded/nine transcript-ready, no pending/damaged/failed
+notes, and HTTP 200. Original identities, checksums, and provenance are unchanged.
 
-The existing computer OAuth authorization cannot inspect/manage AI Gateway
-(HTTP 403). Human setup/authorization is required before enabling paid inference:
+Validation uses `wrangler.validation.jsonc`, separate private resources/secrets, and
+an independent 66-minute allowance. All five attempts completed without retries;
+validation is now paused and its private evidence retained. Previous Whisper resources
+and its failed quality evidence remain untouched. Full report:
+[Grok results](../../docs/research/grok-transcription-results.md).
+
+v1.3 remains flashed; the user confirms the screen and physical BOOT recording. Their
+10.368-second note's complete USB payload matches the cloud checksum, although the
+USB end-marker acknowledgment timed out. Human comparison of its transcript, remaining
+power/recovery tests, and that USB acknowledgment issue are still outstanding.
+
+The existing computer OAuth authorization cannot inspect/manage AI Gateway (HTTP 403).
+Inference through the configured binding works; additional dashboard/admin access is
+only needed to manage/audit the gateway, not to keep these transcripts processing.
+
+### Gateway setup for a fresh account
 
 1. Open Cloudflare Dashboard → **AI → AI Gateway** in the selected account.
 2. Create a dedicated gateway named **`epaper-voice-notes`**; disable request/response
@@ -48,7 +60,10 @@ with an explicit HTTP 413 outcome; this ceiling can be adjusted after platform r
 
 ## Fresh setup
 
-From the repository root, `npm ci`. Select the intended Cloudflare account explicitly
+From the repository root, `npm ci`. For a fresh account, first set
+`PROCESSING_ENABLED=false`; the checked-in production configuration is active for the
+current deployment. Complete setup/approved validation before enabling paid processing.
+Select the intended Cloudflare account explicitly
 (e.g. exported `CLOUDFLARE_ACCOUNT_ID`) and verify OAuth/API permissions. Inspect names
 before creation; do not modify a same-name resource belonging to another project.
 Workers Paid/R2/Queues must already be available; these commands do not authorize a
@@ -118,8 +133,9 @@ paragraph rewriting stage; paragraph quality follows provider output.
 
 ## Recovery and cost controls
 
-- Queue duplicates and concurrent delivery claim only once. Normal inference errors
-  retry at 1, 2, then 4-minute backoff with **3 total attempts** per automatic batch.
+- Queue duplicates and concurrent delivery claim only once. Retryable inference errors
+  retry after 1, then 2 minutes, with **3 total attempts** per automatic batch;
+  a third failure is terminal until an explicit manual retry.
   HTTP 429/5xx and transport/storage errors are retryable; malformed/incomplete
   model output and other HTTP failures are terminal. Infrastructure delivery retries
   are separately bounded in Queue configuration.
@@ -153,8 +169,17 @@ AI with remote bindings disabled. They cover auth, header/checksum failures, imm
 and concurrent uploads, signed/private source access, no-speech outcomes, completed
 publication, duplicate processing, allowance pause, backoff/exhaustion, lost enqueue,
 crash uncertainty, and publication recovery. Computer tests cover atomic no-clobber
-files; host-side firmware tests cover WAV/identity validation. None substitutes for
-live Grok quality, full-duration capability, or physical capture/network tests.
+files; host-side firmware tests cover WAV/identity validation. Synthetic coverage
+checks reject omissions, repeated-passage loss, changed numbers, and silence
+hallucinations. The validation operator's safety tests reject modified inputs,
+production origins, and duplicate paid runs. Live Grok tests have now passed for
+these exact samples; neither synthetic nor local tests guarantee all real speech
+or replace remaining physical capture/recovery checks.
+
+`tools/grok_validation.py` and `tools/grok_coverage.py` reproduce the isolated
+synthetic control/coverage boundaries using ignored settings and retained exact
+fixtures. Do not re-enable validation, reset ledgers, or re-run paid tests without
+explicit approval. No remote account/provider credentials belong in Git.
 
 Do not casually run `wrangler dev` with processing enabled: AI bindings can perform
 remote paid inference during local development.

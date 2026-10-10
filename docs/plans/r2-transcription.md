@@ -4,7 +4,9 @@
 
 **Subsequent user decision:** use **`xai/grok-stt`**, proceed with implementation, and organize device/Cloudflare code in a Git monorepo. This supersedes the previous implementation stop and Cloudflare-hosted-only transcription restriction, not the failed Whisper evidence. No chunking or recording cutoff was approved.
 
-Production implementation is in [`cloud/worker`](../../cloud/worker/README.md), firmware in `device/VoiceNotes`, and computer commands in `tools/cloud_notes.py`. The dedicated service is deployed with processing paused. Local runtime/recovery tests and cloud-enabled firmware compilation pass. After the user connected the device, v1.3 was flashed; all eight SD notes were preserved and their originals uploaded automatically to private R2. All eight cloud records are paused with zero reserved transcription usage; one downloaded note matches its original and cloud checksums. The user then confirmed the screen and physical BOOT start/stop; a 10.368-second spoken recording saved and uploaded with networking active, bringing the paused backlog to nine originals. Its complete USB payload matches the cloud checksum; microphone signal is nonzero with no near-full-scale samples, but independent intelligibility assessment remains pending. A USB end-marker timeout was observed and retained as a follow-up issue. Grok AI Gateway setup, live full-duration/quality validation, and remaining power/recovery/end-to-end tests are outstanding. Billing settings remain unchanged.
+Production implementation is in [`cloud/worker`](../../cloud/worker/README.md), firmware in `device/VoiceNotes`, and computer commands in `tools/cloud_notes.py`. **Processing is now enabled.** The user created the gateway and confirmed $20 of credits; five isolated synthetic Grok tests passed with no retries before releasing personal recordings. Dense 30-minute speech preserved all 60 checkpoints and 4,740 normalized tokens; intermittent 30-minute speech preserved all 60 checkpoints and 2,610 tokens; silence returned empty text. Validation reserved exactly 66 minutes and is now paused. Detailed evidence/limitations: [Grok results](../research/grok-transcription-results.md).
+
+All nine uploaded originals have ready Markdown files, one attempt each, with 111.424 reserved production audio seconds. Original IDs, checksums, filenames, capture provenance, and upload times are unchanged. Safe downloads to ignored `transcripts/` pass and re-downloads skip existing files. Device status confirms nine uploaded/nine transcript-ready, no pending/damaged/failed notes, and HTTP 200. v1.3 was already flashed; no further firmware update was required. The user confirms the screen and physical BOOT recording; the network-active 10.368-second note has a speech result. Human transcript comparison, power/recovery/SD-full testing, and the observed USB end-marker acknowledgment timeout remain outstanding. The agent did not purchase credits or change billing/auto-top-up settings.
 
 The preserved Whisper experiment **did not pass**: 30-minute dense speech omitted expected passages and eight checkpoint labels. Eight synthetic attempts used 111.5/153 reserved audio minutes. Private originals/results and the original ledger remain untouched. Detailed evidence: [experiment results](../research/r2-transcription-results.md). Do not describe that gate as passed or reuse its allowance for production inference.
 
@@ -15,7 +17,8 @@ Capture personal English-language thoughts and ideas on the voice-note device, a
 Terminology: [GLOSSARY.md](../../GLOSSARY.md).
 Initial provider research: [Cloudflare transcription](../research/cloudflare-transcription.md).
 Preflight, pricing assumptions, and local tooling: [Milestone 1 findings](../research/r2-transcription-feasibility.md).
-Executed Cloudflare tests and quality failure: [experiment results](../research/r2-transcription-results.md).
+Executed Whisper tests and quality failure: [experiment results](../research/r2-transcription-results.md).
+Executed Grok tests and activation: [Grok results](../research/grok-transcription-results.md).
 
 ## Agreed behavior
 

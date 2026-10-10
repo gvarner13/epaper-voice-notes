@@ -1,0 +1,29 @@
+{
+  "$schema": "../../node_modules/wrangler/config-schema.json",
+  "name": "epaper-grok-validation",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-10-10",
+  "workers_dev": true,
+  "preview_urls": false,
+  "observability": { "enabled": false },
+  "limits": { "cpu_ms": 30000 },
+  "vars": {
+    "DEVICE_ID": "grok-validation",
+    "PUBLIC_ORIGIN": "https://epaper-grok-validation.garysarahvarner.workers.dev",
+    "AI_GATEWAY_ID": "epaper-voice-notes",
+    "PROCESSING_ENABLED": "false",
+    "MONTHLY_AUDIO_SECONDS": "3960",
+    "MAX_ATTEMPTS": "1",
+    "MAX_AUDIO_BYTES": "96000044"
+  },
+  "ai": { "binding": "AI" },
+  "r2_buckets": [{ "binding": "NOTES", "bucket_name": "epaper-grok-validation" }],
+  "queues": {
+    "producers": [{ "binding": "JOBS", "queue": "epaper-grok-validation" }],
+    "consumers": [{ "queue": "epaper-grok-validation", "max_batch_size": 1,
+      "max_batch_timeout": 1, "max_concurrency": 1, "max_retries": 0 }]
+  },
+  "durable_objects": { "bindings": [{ "name": "LEDGER", "class_name": "NotesLedger" }] },
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["NotesLedger"] }],
+  "triggers": { "crons": ["* * * * *"] }
+}

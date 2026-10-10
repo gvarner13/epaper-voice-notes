@@ -22,6 +22,7 @@ __pycache__/
 # Downloaded SDKs/reference assets and private microphone recordings
 vendor/
 test-recordings/
+/transcripts/
 tools/arduino-cli
 tools/arduino-cli.tar.gz
 tools/*.log

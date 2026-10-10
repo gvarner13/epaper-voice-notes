@@ -11,7 +11,7 @@
     "DEVICE_ID": "recorder-1",
     "PUBLIC_ORIGIN": "https://epaper-voice-notes.garysarahvarner.workers.dev",
     "AI_GATEWAY_ID": "epaper-voice-notes",
-    "PROCESSING_ENABLED": "false",
+    "PROCESSING_ENABLED": "true",
     "MONTHLY_AUDIO_SECONDS": "36000",
     "MAX_ATTEMPTS": "3",
     "MAX_AUDIO_BYTES": "96000044"

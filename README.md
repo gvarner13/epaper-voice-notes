@@ -23,11 +23,14 @@ npm run build:device
 ```
 
 Production setup/API/recovery: [`cloud/worker/README.md`](cloud/worker/README.md).
-v1.3 has been compiled with cloud enabled and flashed through `/dev/cu.usbmodem101`. SD/microphone startup, Wi-Fi, display-ready status, preservation of all eight notes, and upload of all eight originals to private R2 are verified. Processing is **paused** with zero reserved transcription usage. AI Gateway setup/credits, live Grok quality tests, independent speech-intelligibility assessment, and power-button/shutdown/recovery tests remain pending. The user has now confirmed the screen and physical BOOT recording controls; a network-active spoken test saved/uploaded successfully. Earlier hardware results below describe prior firmware unless explicitly marked v1.3.
+**Transcription is enabled.** After the user created the AI Gateway and confirmed $20 of credits, five isolated Grok tests passed, including dense and intermittent 30-minute WAVs. The dense transcript preserved all 60 checkpoints and all 4,740 normalized stimulus tokens. All nine device originals now have ready Markdown files, downloaded to ignored `transcripts/`; each used one inference attempt. New completed recordings upload and transcribe automatically. Downloads to the computer are manual.
+
+v1.3 is flashed and the user confirms the screen and physical BOOT recording controls. Remaining checks include human comparison of the spoken transcript, power-button/battery shutdown, network/reboot recovery, SD-full behavior, and the USB end-marker acknowledgment timeout. Full evidence: [Grok results](docs/research/grok-transcription-results.md). Earlier hardware bullets below retain historical snapshots.
 
 ## Current hardware verification
 
-- **v1.3:** flashed successfully; idle status reports `pending=0 uploaded=8 transcripts=0 damaged=0 failed=0 cloud_http=201`, Wi-Fi connected, and `display=2`. All eight pre-update filename/size entries remain on SD. All eight cloud originals are paused; reserved transcription usage is zero. `VN000001.WAV` downloaded over USB and its size/SHA-256 match both the original local fixture and cloud metadata: mono, 16 kHz, 16-bit PCM, 48,128 frames. No new recording was initiated by the agent. Actual screen appearance and network-active spoken capture still require user verification.
+- **Grok activation:** all nine originals have ready Markdown files; device reports `pending=0 uploaded=9 transcripts=9 damaged=0 failed=0 cloud_http=200`, Wi-Fi connected and `display=2`. All original IDs/checksums/provenance are unchanged. Validation is paused after exactly 66 reserved audio minutes; production usage is 111.424 seconds. Tests/processing did not require another firmware flash.
+- **Initial v1.3 snapshot:** flashed successfully; idle status reports `pending=0 uploaded=8 transcripts=0 damaged=0 failed=0 cloud_http=201`, Wi-Fi connected, and `display=2`. All eight pre-update filename/size entries remain on SD. All eight cloud originals are paused; reserved transcription usage is zero. `VN000001.WAV` downloaded over USB and its size/SHA-256 match both the original local fixture and cloud metadata: mono, 16 kHz, 16-bit PCM, 48,128 frames. No new recording was initiated by the agent. Actual screen appearance and network-active spoken capture still require user verification.
 - **User-operated v1.3 test:** screen appearance confirmed good; physical BOOT start/stop saved `VN000009.WAV` with Wi-Fi/cloud sync active. WAV is 331,820 bytes, mono 16 kHz PCM16, 165,888 frames / 10.368 s. It contains nonzero microphone signal (peak 28,188) with no samples near full scale; intelligibility has not been independently assessed. SD/USB/cloud size and SHA-256 match. All nine originals are uploaded and paused, with zero transcription usage and `pending=0 uploaded=9 transcripts=0 damaged=0 failed=0 cloud_http=201`. Fresh capture timestamp is known. USB delivered all audio bytes but the `FILE_END` acknowledgment timed out; the complete payload was independently verified against cloud SHA-256 before local publication. The terminator timeout remains a follow-up issue, not an observed audio integrity failure.
 - Firmware compiled and flashed successfully through `/dev/cu.usbmodem101`.
 - Chip identified as ESP32-S3-PICO-1, 8 MB flash / 8 MB PSRAM.
@@ -114,7 +117,7 @@ python3 tools/cloud_notes.py download ./transcripts
 python3 tools/cloud_notes.py retry recorder-1_REPLACE_WITH_32_HEX_DIGITS
 ```
 
-Downloads are atomic and never replace existing/edited Markdown. `retry` is explicit and can spend additional inference allowance. Uploading a recording is separate from having a complete transcript.
+All nine initial Markdown files are already in ignored `transcripts/`. Re-run `download` for new completed notes; it skips existing files and never replaces your edits. Each file's metadata identifies its original `VNxxxxxx.WAV`. Downloads are atomic. `retry` is explicit and can spend additional inference allowance. Uploading a recording is separate from having a complete transcript.
 
 ## Sources
 
