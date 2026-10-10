@@ -23,10 +23,11 @@ npm run build:device
 ```
 
 Production setup/API/recovery: [`cloud/worker/README.md`](cloud/worker/README.md).
-The new v1.3 firmware compiles with cloud enabled but **has not been flashed or hardware-tested**. The production service is deployed with processing **paused**; no personal audio has been uploaded. AI Gateway setup/credits and live Grok quality testing remain pending. The following hardware results describe previously flashed v1.2 firmware.
+v1.3 has been compiled with cloud enabled and flashed through `/dev/cu.usbmodem101`. SD/microphone startup, Wi-Fi, display-ready status, preservation of all eight notes, and upload of all eight originals to private R2 are verified. Processing is **paused** with zero reserved transcription usage. AI Gateway setup/credits, live Grok quality tests, spoken capture with networking active, physical buttons, and shutdown/recovery tests remain pending. Earlier hardware results below describe prior firmware unless explicitly marked v1.3.
 
 ## Current hardware verification
 
+- **v1.3:** flashed successfully; idle status reports `pending=0 uploaded=8 transcripts=0 damaged=0 failed=0 cloud_http=201`, Wi-Fi connected, and `display=2`. All eight pre-update filename/size entries remain on SD. All eight cloud originals are paused; reserved transcription usage is zero. `VN000001.WAV` downloaded over USB and its size/SHA-256 match both the original local fixture and cloud metadata: mono, 16 kHz, 16-bit PCM, 48,128 frames. No new recording was initiated by the agent. Actual screen appearance and network-active spoken capture still require user verification.
 - Firmware compiled and flashed successfully through `/dev/cu.usbmodem101`.
 - Chip identified as ESP32-S3-PICO-1, 8 MB flash / 8 MB PSRAM.
 - ES8311 codec initialization succeeds.

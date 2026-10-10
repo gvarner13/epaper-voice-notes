@@ -11,7 +11,10 @@ audio-only R2 notification, and one-minute recovery Cron are deployed. All three
 random application secrets are installed. Anonymous API/unsigned audio access is
 rejected; device listing is denied; the separate reader can inspect empty state.
 Processing is **paused** (`PROCESSING_ENABLED=false`). No audio was uploaded during
-setup. Previous feasibility resources/evidence remain untouched.
+setup. Following the user connecting the device, v1.3 was flashed and all eight
+existing completed originals uploaded automatically. All eight are paused; reserved
+transcription usage remains zero. SD note preservation and one USB/original/cloud
+checksum comparison pass. Previous feasibility resources/evidence remain untouched.
 
 The existing computer OAuth authorization cannot inspect/manage AI Gateway
 (HTTP 403). Human setup/authorization is required before enabling paid inference:
