@@ -17,8 +17,9 @@
 #include "src/codec_board/codec_init.h"
 #include "src/esp_codec_dev/include/esp_codec_dev.h"
 #include "wav.h"
+#include "cloud_sync.h"
 
-// Waveshare ESP32-S3-ePaper-1.54G (four colors). All recordings stay local.
+// Waveshare ESP32-S3-ePaper-1.54G (four colors). Originals always stay on SD.
 constexpr int PWR_PIN = 18; // BOOT_PIN = 0 is provided by the ESP32 core.
 constexpr int EPD_POWER = 6, AUDIO_POWER = 42, BATTERY_HOLD = 17, AMP_ENABLE = 46;
 constexpr uint32_t MAX_DATA = 0x7FFF0000; // Stay below signed 32-bit fseek / RIFF / FAT32 limits.
@@ -28,9 +29,10 @@ const char *NOTES = "/sdcard/NOTES";
 enum Action : uint8_t { TOGGLE, START, STOP, REPORT, LIST, GET, SHUTDOWN };
 struct Command { Action action; char name[13]; };
 enum WifiState : uint8_t { WIFI_CONNECTING, WIFI_CONNECTED, WIFI_OFFLINE };
-struct Screen { char title[24]; char detail[40]; uint32_t seconds; bool recording; WifiState wifi; };
+struct Screen { char title[24]; char detail[40]; char cloud[40]; uint32_t seconds; bool recording; WifiState wifi; };
 QueueHandle_t commands, screens;
 SemaphoreHandle_t usbOutputLock, screenLock;
+SemaphoreHandle_t sdLock;
 Screen currentScreen{};
 std::atomic<WifiState> wifiState{WIFI_CONNECTING};
 
@@ -63,6 +65,8 @@ void show(const char *title, const char *detail = "", uint32_t seconds = 0, bool
   snprintf(s.title, sizeof(s.title), "%s", title);
   snprintf(s.detail, sizeof(s.detail), "%s", detail);
   s.seconds = seconds; s.recording = recording;
+  if (cloudIsEnabled) snprintf(s.cloud, sizeof(s.cloud), "Cloud P:%u U:%u T:%u E:%u", cloudPending.load(), cloudUploaded.load(), cloudReady.load(), cloudDamaged.load() + cloudFailed.load());
+  else snprintf(s.cloud, sizeof(s.cloud), "Cloud: disabled (local only)");
   xSemaphoreTake(screenLock, portMAX_DELAY);
   s.wifi = wifiState.load();
   currentScreen = s;
@@ -94,11 +98,23 @@ void updateWifiScreen(WifiState state) {
   xSemaphoreGive(screenLock);
 }
 
+void updateCloudScreen() {
+  xSemaphoreTake(screenLock, portMAX_DELAY);
+  char summary[40];
+  snprintf(summary, sizeof(summary), "Cloud P:%u U:%u T:%u E:%u", cloudPending.load(), cloudUploaded.load(), cloudReady.load(), cloudDamaged.load() + cloudFailed.load());
+  if (!currentScreen.recording && !shuttingDown && strcmp(currentScreen.cloud, summary)) {
+    snprintf(currentScreen.cloud, sizeof(currentScreen.cloud), "%s", summary);
+    xQueueOverwrite(screens, &currentScreen);
+  }
+  xSemaphoreGive(screenLock);
+}
+
 void wifiTask(void *) {
   WiFi.persistent(false); // Credentials live in the local header, not flash preferences.
   WiFi.mode(WIFI_STA);
   WiFi.setAutoReconnect(true);
   WiFi.begin(WIFI_SSID, WIFI_PASSWORD); // No blocking wait for a connection.
+  configTime(0, 0, "pool.ntp.org", "time.cloudflare.com"); // Unknown until synchronized; no blocking wait.
   uint32_t lastAttempt = millis();
   WifiState lastReported = WIFI_CONNECTING;
   usbLine("WIFI connecting");
@@ -166,8 +182,8 @@ void displayTask(void *) {
       gfx.print(!strcmp(s.title, "Power off") ? "WiFi: off" :
                 (s.wifi == WIFI_CONNECTING ? "WiFi: connecting..." : "WiFi: offline (retrying)"));
     }
-    gfx.setTextSize(1); gfx.setCursor(12, 162); gfx.print("BOOT: start / stop");
-    gfx.setCursor(12, 179); gfx.print("Hold PWR: save / off");
+    gfx.setTextSize(1); gfx.setCursor(12, 162); gfx.print(s.cloud);
+    gfx.setCursor(12, 179); gfx.print("BOOT start/stop; PWR hold off");
     panel->EPD_Display();
     first = false;
     if (!panel->isHealthy()) {
@@ -341,15 +357,20 @@ void recorderTask(void *) {
   char name[13] = "";
   uint32_t bytes = 0, nextId = 1, lastSync = 0;
   int peakLeft = 0, peakRight = 0;
-  ready = true; show("Ready", "SD card mounted"); Serial.println("READY");
+  ready = true; cloudPaused = false;
+  cloudStartTask();
+  show("Ready", "SD card mounted"); Serial.println("READY");
   for (;;) {
     Command cmd{};
     bool haveCommand = xQueueReceive(commands, &cmd, 0) == pdTRUE;
+    if (haveCommand) cloudPaused = true; // SD commands and capture preempt background transfer.
     bool finish = haveCommand && (cmd.action == STOP || cmd.action == SHUTDOWN || (cmd.action == TOGGLE && file));
     bool start = haveCommand && (cmd.action == START || (cmd.action == TOGGLE && !file));
     if (finish && file) {
+      SdGuard guard;
       bool ok = checkpoint(file, bytes);
       if (fclose(file) != 0) ok = false;
+      cloudFinishRecording(name, ok);
       file = nullptr;
       Serial.printf("%s %s bytes=%lu seconds=%.2f peakL=%d peakR=%d\n",
                     ok ? "SAVED" : "SAVE_ERROR", name, (unsigned long)bytes, bytes / 32000.0, peakLeft, peakRight);
@@ -359,21 +380,22 @@ void recorderTask(void *) {
       powerDown();
     }
     if (haveCommand && cmd.action == REPORT) {
-      char status[256];
+      char status[384];
       bool connected = WiFi.status() == WL_CONNECTED;
-      snprintf(status, sizeof(status), "STATUS %s file=%s bytes=%lu boot=%d pwr=%d display=%d wifi=%s ssid=%s ip=%s rssi=%d",
+      snprintf(status, sizeof(status), "STATUS %s file=%s bytes=%lu boot=%d pwr=%d display=%d wifi=%s ssid=%s ip=%s rssi=%d pending=%u uploaded=%u transcripts=%u damaged=%u failed=%u cloud_http=%d",
                file ? "RECORDING" : "IDLE", name, (unsigned long)bytes,
                digitalRead(BOOT_PIN), digitalRead(PWR_PIN), int(panelState.load()),
                wifiStateName(wifiState.load()), WIFI_SSID,
-               connected ? WiFi.localIP().toString().c_str() : "0.0.0.0", connected ? WiFi.RSSI() : 0);
+               connected ? WiFi.localIP().toString().c_str() : "0.0.0.0", connected ? WiFi.RSSI() : 0,
+               cloudPending.load(), cloudUploaded.load(), cloudReady.load(), cloudDamaged.load(), cloudFailed.load(), cloudLastHttp.load());
       usbLine(status);
     }
     if (haveCommand && (cmd.action == LIST || cmd.action == GET)) {
       if (file) Serial.println("BUSY stop recording first");
-      else if (cmd.action == LIST) listNotes();
-      else getNote(cmd.name);
+      else { SdGuard guard; if (cmd.action == LIST) listNotes(); else getNote(cmd.name); }
     }
     if (start && !file) {
+      SdGuard guard;
       char path[64];
       int fd = -1;
       while (nextId <= 999999) {
@@ -389,16 +411,18 @@ void recorderTask(void *) {
       } else {
         bytes = 0; peakLeft = peakRight = 0;
         lastSync = millis();
-        if (!checkpoint(file, 0)) {
+        if (!cloudBeginRecording(name) || !checkpoint(file, 0)) {
           fclose(file); file = nullptr; show("Write error", "Cannot write WAV header");
         } else {
           show("Recording", name, 0, true); Serial.printf("RECORDING %s\n", name);
         }
       }
     }
+    cloudPaused = file != nullptr || shuttingDown || uxQueueMessagesWaiting(commands) > 0;
     // Continuously drain I2S, even idle: a new note has no old DMA-buffered audio.
     if (esp_codec_dev_read(microphone, stereo, FRAMES * 4) != ESP_CODEC_DEV_OK) {
-      if (file) { checkpoint(file, bytes); fclose(file); file = nullptr; }
+      if (file) { SdGuard guard; checkpoint(file, bytes); fclose(file); file = nullptr; }
+      cloudPaused = true;
       Serial.println("MIC_READ_ERROR"); show("Mic error", "Reboot device");
       ready = false; vTaskDelete(nullptr); return;
     }
@@ -408,6 +432,7 @@ void recorderTask(void *) {
       peakLeft = max(peakLeft, abs((int)stereo[2 * i]));
       peakRight = max(peakRight, abs((int)stereo[2 * i + 1]));
     }
+    SdGuard writeGuard;
     size_t wrote = fwrite(mono, 1, FRAMES * 2, file);
     bytes += wrote - (wrote % 2);
     bool failed = wrote != FRAMES * 2;
@@ -426,6 +451,7 @@ void recorderTask(void *) {
 
 void sendCommand(Action action, const char *name = "") {
   Command cmd{}; cmd.action = action; snprintf(cmd.name, sizeof(cmd.name), "%s", name);
+  cloudPaused = true; // Signal cancellation before the recorder consumes the command.
   if (xQueueSend(commands, &cmd, 0) != pdTRUE) usbLine("COMMAND_QUEUE_FULL");
 }
 
@@ -447,11 +473,12 @@ void setup() {
   pinMode(AMP_ENABLE, OUTPUT); digitalWrite(AMP_ENABLE, LOW);
   pinMode(BOOT_PIN, INPUT_PULLUP); pinMode(PWR_PIN, INPUT_PULLUP);
   Serial.begin(115200); delay(1000);
-  Serial.println("VOICE_NOTES_1.54G v1.2; SD card is never formatted");
+  Serial.println("VOICE_NOTES_1.54G v1.3; SD card is never formatted");
   commands = xQueueCreate(8, sizeof(Command)); screens = xQueueCreate(1, sizeof(Screen));
   usbOutputLock = xSemaphoreCreateMutex();
   screenLock = xSemaphoreCreateMutex();
-  if (!commands || !screens || !usbOutputLock || !screenLock || !psramFound()) {
+  sdLock = xSemaphoreCreateMutex();
+  if (!commands || !screens || !usbOutputLock || !screenLock || !sdLock || !psramFound()) {
     Serial.println("INIT_ERROR queues / PSRAM"); return;
   }
   show("Starting", "Checking SD / microphone");

@@ -2,15 +2,15 @@
 
 ## Status
 
-Product scope confirmed by the user. **Milestone 1 did not pass its quality gate.** The isolated `cloud/feasibility` harness is deployed after explicit user approval and authorization. Eight Worker behavior tests, nine fixture tests, TypeScript checking, and the dry-run bundle pass. Whole-file 30-minute transport/runtime testing succeeded, but a dense-speech transcript omitted expected passages and eight checkpoint labels. Silence hallucinated text with VAD disabled; VAD enabled fixed that observed silence case but not dense-speech fidelity. Eight synthetic inference attempts used 111.5/153 reserved audio minutes.
+**Subsequent user decision:** use **`xai/grok-stt`**, proceed with implementation, and organize device/Cloudflare code in a Git monorepo. This supersedes the previous implementation stop and Cloudflare-hosted-only transcription restriction, not the failed Whisper evidence. No chunking or recording cutoff was approved.
 
-Further inference and full pipeline implementation are stopped pending the user's next decision. Private test originals/results and the ledger are retained. No personal recording was uploaded; no paid subscription was activated/changed, and firmware is unchanged. Detailed evidence: [experiment results](../research/r2-transcription-results.md).
+Production implementation is in [`cloud/worker`](../../cloud/worker/README.md), firmware in `device/VoiceNotes`, and computer commands in `tools/cloud_notes.py`. The dedicated service is deployed with processing paused. Local runtime/recovery tests and cloud-enabled firmware compilation pass; the new firmware has not been flashed. Grok AI Gateway setup, live full-duration/quality validation, and hardware/end-to-end verification remain outstanding. No personal recordings were uploaded or billing settings changed.
 
-The first milestone is a Cloudflare feasibility test. Do not implement the full pipeline or change recorder firmware until that gate passes. Return to the user if meeting the target requires chunking or a shorter supported transcription length.
+The preserved Whisper experiment **did not pass**: 30-minute dense speech omitted expected passages and eight checkpoint labels. Eight synthetic attempts used 111.5/153 reserved audio minutes. Private originals/results and the original ledger remain untouched. Detailed evidence: [experiment results](../research/r2-transcription-results.md). Do not describe that gate as passed or reuse its allowance for production inference.
 
 ## Goal
 
-Capture personal English-language thoughts and ideas on the voice-note device, automatically preserve recordings in private Cloudflare R2 storage, and produce faithful Markdown transcripts using Cloudflare-hosted transcription.
+Capture personal English-language thoughts and ideas on the voice-note device, automatically preserve recordings in private Cloudflare R2 storage, and produce faithful Markdown transcripts using the user-selected Grok STT integration through Cloudflare.
 
 Terminology: [GLOSSARY.md](../../GLOSSARY.md).
 Initial provider research: [Cloudflare transcription](../research/cloudflare-transcription.md).
@@ -34,7 +34,7 @@ Executed Cloudflare tests and quality failure: [experiment results](../research/
 
 ### Cloud processing and output
 
-- Use Cloudflare for storage, orchestration, and transcription; no separate third-party transcription endpoint.
+- Use Cloudflare for storage/orchestration and `xai/grok-stt` through its AI binding/AI Gateway. xAI is the third-party inference provider, selected by the subsequent user decision.
 - Process asynchronously after upload so the device can switch off.
 - Produce one Markdown file per recording, with faithful transcript text and readable punctuation/paragraphs, not summaries or rewritten notes.
 - Use stable recording identifiers in filenames, not AI-generated titles. No generated tags in version one.
@@ -63,14 +63,14 @@ SD recording
   -> private R2 audio object
   -> R2 object-create notification
   -> Cloudflare Queue
-  -> transcription Worker using Workers AI
+  -> transcription Worker using xai/grok-stt through AI Gateway
   -> private R2 Markdown object
 
 Device <- authenticated processing status
 Computer command <- authenticated status, retry, and transcript downloads
 ```
 
-Use object-prefix/suffix filtering so transcript output does not trigger transcription again. The initial model candidate is Cloudflare-hosted `@cf/openai/whisper-large-v3-turbo`; selection remains subject to feasibility and quality validation.
+Use object-prefix/suffix filtering so transcript output does not trigger transcription again. The initial Whisper candidate failed its quality gate. The subsequent selected model is `xai/grok-stt`; its URL input uses a short-lived, attempt-scoped signed original-audio link because the gateway's `file` input has a 25 MB ceiling. Live Grok quality/full-duration validation remains necessary.
 
 Keep upload, processing, and publication states distinct. A successful audio upload is not a successful transcription. Choose the concrete durable state mechanism during implementation, based on tested retry/concurrency requirements.
 

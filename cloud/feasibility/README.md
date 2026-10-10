@@ -4,8 +4,10 @@ Milestone 1 only. This is **not** the production upload/transcription pipeline.
 No recorder firmware is changed. The isolated harness is deployed and eight real
 synthetic inference attempts ran. **The quality gate did not pass:** dense speech
 lost expected passages despite successful whole-file transport. See the
-[experiment results](../../docs/research/r2-transcription-results.md). Further
-inference and production implementation are stopped pending the user's decision.
+[experiment results](../../docs/research/r2-transcription-results.md). This harness
+remains idle. The user's subsequent `xai/grok-stt` decision authorizes the separate
+[`cloud/worker`](../worker/README.md) implementation; it does not turn these results
+into a passing quality gate or authorize resetting this test ledger.
 
 ## Approved scope
 
@@ -120,7 +122,8 @@ npm run typecheck
 npm run check:bundle
 ```
 
-Run these from `cloud/feasibility`. Do **not** run `wrangler dev` casually: an AI
+Install dependencies from the monorepo root with `npm ci`; workspace checks can also
+be run from `cloud/feasibility`. Do **not** run `wrangler dev` casually: an AI
 binding can perform paid remote inference even when the Worker is running locally.
 
 ## Remote sequence used for this experiment

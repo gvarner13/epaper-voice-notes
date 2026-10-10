@@ -1,5 +1,5 @@
 {
-  "$schema": "node_modules/wrangler/config-schema.json",
+  "$schema": "../../node_modules/wrangler/config-schema.json",
   "name": "epaper-transcription-feasibility-20261010",
   "main": "src/index.ts",
   "compatibility_date": "2026-10-10",

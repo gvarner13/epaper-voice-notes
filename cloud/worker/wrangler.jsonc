@@ -1,0 +1,30 @@
+{
+  "$schema": "../../node_modules/wrangler/config-schema.json",
+  "name": "epaper-voice-notes",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-10-10",
+  "workers_dev": true,
+  "preview_urls": false,
+  "observability": { "enabled": false },
+  "limits": { "cpu_ms": 30000 },
+  "vars": {
+    "DEVICE_ID": "recorder-1",
+    "PUBLIC_ORIGIN": "https://epaper-voice-notes.garysarahvarner.workers.dev",
+    "AI_GATEWAY_ID": "epaper-voice-notes",
+    "PROCESSING_ENABLED": "false",
+    "MONTHLY_AUDIO_SECONDS": "36000",
+    "MAX_ATTEMPTS": "3",
+    "MAX_AUDIO_BYTES": "96000044"
+  },
+  "ai": { "binding": "AI" },
+  "r2_buckets": [{ "binding": "NOTES", "bucket_name": "epaper-voice-notes" }],
+  "queues": {
+    "producers": [{ "binding": "JOBS", "queue": "epaper-voice-notes" }],
+    "consumers": [{ "queue": "epaper-voice-notes", "max_batch_size": 1,
+      "max_batch_timeout": 1, "max_concurrency": 1, "max_retries": 3,
+      "retry_delay": 60 }]
+  },
+  "durable_objects": { "bindings": [{ "name": "LEDGER", "class_name": "NotesLedger" }] },
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["NotesLedger"] }],
+  "triggers": { "crons": ["* * * * *"] }
+}

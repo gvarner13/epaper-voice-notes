@@ -1,0 +1,38 @@
+name: Checks
+on:
+  push:
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  cloud-and-tools:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.14'
+      - run: npm ci
+      - run: npm test
+      - run: npm run typecheck
+      - run: npm run check:bundle
+  firmware:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: arduino/setup-arduino-cli@v2
+      - name: Install pinned toolchain
+        run: |
+          arduino-cli core update-index --additional-urls https://espressif.github.io/arduino-esp32/package_esp32_index.json
+          arduino-cli core install esp32:esp32@3.3.0 --additional-urls https://espressif.github.io/arduino-esp32/package_esp32_index.json
+          arduino-cli lib install 'Adafruit BusIO@1.17.4' 'Adafruit GFX Library@1.12.6'
+      - name: Compile without credentials or hardware
+        env:
+          ARDUINO_CLI: arduino-cli
+        run: |
+          cp device/VoiceNotes/wifi_credentials.h.example device/VoiceNotes/wifi_credentials.h
+          bash tools/build_device.sh
