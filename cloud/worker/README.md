@@ -14,7 +14,12 @@ Processing is **paused** (`PROCESSING_ENABLED=false`). No audio was uploaded dur
 setup. Following the user connecting the device, v1.3 was flashed and all eight
 existing completed originals uploaded automatically. All eight are paused; reserved
 transcription usage remains zero. SD note preservation and one USB/original/cloud
-checksum comparison pass. Previous feasibility resources/evidence remain untouched.
+checksum comparison pass. The user's subsequent physical BOOT recording test saved
+and uploaded `VN000009.WAV` (10.368 s); all nine originals are now paused with zero
+reserved transcription usage. Its complete USB payload matches the cloud checksum,
+although the USB end-marker acknowledgment timed out. The user confirms the screen
+looks good; transcription quality and independent audio intelligibility remain
+unverified. Previous feasibility resources/evidence remain untouched.
 
 The existing computer OAuth authorization cannot inspect/manage AI Gateway
 (HTTP 403). Human setup/authorization is required before enabling paid inference:
