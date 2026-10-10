@@ -1,0 +1,44 @@
+{
+  "short": {
+    "filename": "short.wav",
+    "duration_seconds": 30,
+    "bytes": 960044,
+    "sha256": "241875431171b2a326f217284823766aec58068a0aa04e39f3574d77a5cf6b6d",
+    "expected_outcome": "transcript"
+  },
+  "five-minute": {
+    "filename": "five-minute.wav",
+    "duration_seconds": 300,
+    "bytes": 9600044,
+    "sha256": "d4604d94ce7b097bbcb499af316ea5809710c86355c1ad33e971c25f73c78bfe",
+    "expected_outcome": "transcript"
+  },
+  "fifteen-minute": {
+    "filename": "fifteen-minute.wav",
+    "duration_seconds": 900,
+    "bytes": 28800044,
+    "sha256": "c98f08e76c22d130b46d8e294a89272a089a782e0aa12d32291cf7b75e7cc34b",
+    "expected_outcome": "transcript"
+  },
+  "thirty-minute": {
+    "filename": "thirty-minute.wav",
+    "duration_seconds": 1800,
+    "bytes": 57600044,
+    "sha256": "8e51ce63c187f2088cfa41cd0c728b806f51866aea7ccc0c0d5ae33403a0f091",
+    "expected_outcome": "transcript"
+  },
+  "thirty-minute-dense": {
+    "filename": "thirty-minute-dense.wav",
+    "duration_seconds": 1800,
+    "bytes": 57600044,
+    "sha256": "c14f4c4fd6c1e64bcbcfa55875bcd1e6426cdb68e4332a4495e70333efbfb021",
+    "expected_outcome": "transcript"
+  },
+  "silence": {
+    "filename": "silence.wav",
+    "duration_seconds": 30,
+    "bytes": 960044,
+    "sha256": "40abc924dc63f75aafb2400bb99fd66741e22eb9ff2450973a18db53a06286ac",
+    "expected_outcome": "no-speech-model-result"
+  }
+}

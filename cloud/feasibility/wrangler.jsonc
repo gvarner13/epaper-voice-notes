@@ -1,0 +1,28 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "epaper-transcription-feasibility-20261010",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-10-10",
+  "workers_dev": true,
+  "preview_urls": false,
+  "limits": { "cpu_ms": 30000 },
+  "observability": { "enabled": false },
+  "vars": { "MAX_AUDIO_SECONDS": "9180", "MAX_ATTEMPTS_PER_FIXTURE": "3" },
+  "ai": { "binding": "AI" },
+  "r2_buckets": [{
+    "binding": "AUDIO",
+    "bucket_name": "epaper-transcription-feasibility-20261010"
+  }],
+  "queues": {
+    "producers": [{ "binding": "JOBS", "queue": "epaper-transcription-feasibility-20261010" }],
+    "consumers": [{
+      "queue": "epaper-transcription-feasibility-20261010",
+      "max_batch_size": 1,
+      "max_batch_timeout": 1,
+      "max_concurrency": 1,
+      "max_retries": 0
+    }]
+  },
+  "durable_objects": { "bindings": [{ "name": "LEDGER", "class_name": "FeasibilityLedger" }] },
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["FeasibilityLedger"] }]
+}
