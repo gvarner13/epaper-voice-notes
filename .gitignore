@@ -1,0 +1,28 @@
+# Secrets and local account state
+.local/
+**/wifi_credentials.h
+**/cloud_credentials.h
+**/.dev.vars*
+**/.env
+**/.env.*
+!**/.env.example
+
+# Dependencies, generated types, and build outputs
+node_modules/
+**/.wrangler/
+**/.bundle/
+**/worker-configuration.d.ts
+build/
+tools/*build*/
+tools/venv/
+__pycache__/
+*.pyc
+.DS_Store
+
+# Downloaded SDKs/reference assets and private microphone recordings
+vendor/
+test-recordings/
+tools/arduino-cli
+tools/arduino-cli.tar.gz
+tools/*.log
+tools/*.pdf
