@@ -11,6 +11,7 @@ The original product link pointed to the black-and-white 1.54 model. A later scr
 - `cloud/worker/`: production Cloudflare Worker, private R2 storage, Queue, and durable ledger using **`xai/grok-stt`**.
 - `cloud/feasibility/`: preserved Whisper experiment/evidence; not the production service.
 - `tools/`: build, USB, cloud-download, and test commands.
+- `web/`: local-only TanStack Start + shadcn/ui transcript reader.
 
 Git is initialized on `main`. Credentials, local account settings, microphone recordings, vendor downloads, and build artifacts are ignored. No Git remote is configured.
 
@@ -26,6 +27,14 @@ Production setup/API/recovery: [`cloud/worker/README.md`](cloud/worker/README.md
 **Transcription is enabled.** After the user created the AI Gateway and confirmed $20 of credits, five isolated Grok tests passed, including dense and intermittent 30-minute WAVs. The dense transcript preserved all 60 checkpoints and all 4,740 normalized stimulus tokens. All nine device originals now have ready Markdown files, downloaded to ignored `transcripts/`; each used one inference attempt. New completed recordings upload and transcribe automatically. Downloads to the computer are manual.
 
 v1.3 is flashed and the user confirms the screen and physical BOOT recording controls. Remaining checks include human comparison of the spoken transcript, power-button/battery shutdown, network/reboot recovery, SD-full behavior, and the USB end-marker acknowledgment timeout. Full evidence: [Grok results](docs/research/grok-transcription-results.md). Earlier hardware bullets below retain historical snapshots.
+
+## Local transcript reader
+
+```sh
+npm run dev:web
+```
+
+Open **http://127.0.0.1:3000**. Existing reader settings in `.local/production.env` load automatically; credentials stay server-side. The read-only app shows all recording states, complete transcripts, copy/download, and manual refresh. It runs only on this computer, needs Internet access for cloud data, and does not deploy or start/retry processing. Setup and checks: [`web/README.md`](web/README.md).
 
 ## Current hardware verification
 

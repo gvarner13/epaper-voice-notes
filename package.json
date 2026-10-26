@@ -1,8 +1,10 @@
 {
   "name": "epaper-voice-notes",
   "private": true,
-  "workspaces": ["cloud/worker", "cloud/feasibility"],
+  "workspaces": ["cloud/worker", "cloud/feasibility", "web"],
   "scripts": {
+    "dev:web": "npm run dev -w @voice-notes/web",
+    "build:web": "npm run build -w @voice-notes/web",
     "test": "npm run test --workspaces && python3 -m unittest discover -s tools -p 'test_*.py'",
     "typecheck": "npm run typecheck --workspaces",
     "check:bundle": "npm run check:bundle --workspaces",

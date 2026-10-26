@@ -13,6 +13,8 @@ node_modules/
 **/.bundle/
 **/worker-configuration.d.ts
 build/
+web/dist/
+web/.tanstack/
 tools/*build*/
 tools/venv/
 __pycache__/
