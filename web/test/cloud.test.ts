@@ -131,6 +131,34 @@ describe("read-only cloud adapter", () => {
     expect((await listRecordings()).ok).toBe(false);
     expect(fetch).not.toHaveBeenCalled();
   });
+  it("preserves validated classification metadata while stripping internal job fields", async () => {
+    vi.mocked(fetch).mockResolvedValue(json({ notes: [{ ...note(),
+      classification_status: "complete", classification: "task",
+      classification_model: "@cf/cloudflare/clef",
+      classification_probabilities: { note: 0.1, task: 0.9 },
+      classification_input_tokens: 123, classification_attempts: 1,
+      classification_attempt_id: "internal-job-token", classification_lease_until: 1234,
+    }] }));
+    const result = await listRecordings();
+    expect(result).toMatchObject({ ok: true, value: [{
+      classification_status: "complete", classification: "task",
+      classification_model: "@cf/cloudflare/clef",
+      classification_probabilities: { note: 0.1, task: 0.9 },
+      classification_input_tokens: 123, classification_attempts: 1,
+    }] });
+    expect(JSON.stringify(result)).not.toContain("internal-job-token");
+    expect(JSON.stringify(result)).not.toContain("classification_lease_until");
+  });
+  it.each([
+    { classification: "other" },
+    { classification_status: "unknown" },
+    { classification_status: "complete" },
+    { classification_probabilities: { note: -0.1, task: 1.1 } },
+    { classification_input_tokens: -1 },
+  ])("rejects malformed classification metadata: %j", async classification => {
+    vi.mocked(fetch).mockResolvedValue(json({ notes: [{ ...note(), ...classification }] }));
+    expect((await listRecordings()).ok).toBe(false);
+  });
   it("fails safely on malformed metadata", async () => {
     vi.mocked(fetch).mockResolvedValue(
       json({ notes: [{ ...note(), state: "invented" }] }),

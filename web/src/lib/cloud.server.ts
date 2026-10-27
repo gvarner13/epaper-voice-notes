@@ -25,7 +25,19 @@ const recordingSchema = z.object({
   attempts: z.number().int().nonnegative(),
   error: z.string().max(500).optional(),
   outcome: z.enum(["speech", "no-speech-model-result"]).optional(),
-});
+  classification_status: z.enum(["pending", "complete", "failed", "not-applicable"]).optional(),
+  classification: z.enum(["note", "task"]).optional(),
+  classification_model: z.string().max(100).optional(),
+  classification_probabilities: z.object({
+    note: z.number().min(0).max(1),
+    task: z.number().min(0).max(1),
+  }).optional(),
+  classification_input_tokens: z.number().int().nonnegative().optional(),
+  classification_attempts: z.number().int().nonnegative().optional(),
+  classification_error: z.string().max(500).optional(),
+}).refine(recording => recording.classification_status !== "complete" ||
+  (recording.classification !== undefined && recording.classification_model !== undefined &&
+    recording.classification_probabilities !== undefined));
 const pageSchema = z.object({
   notes: z.array(recordingSchema),
   cursor: idSchema.nullable().optional(),

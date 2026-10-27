@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import {
+  classificationLabel,
   formatDate,
   formatDuration,
   recordingDate,
@@ -36,6 +37,14 @@ describe("recording presentation", () => {
     expect(
       recordingDate({ ...note, captured_at: "2026-10-09T12:00:00Z" }),
     ).toEqual({ label: "Captured", value: "2026-10-09T12:00:00Z" });
+  });
+  it("distinguishes classification states without implying transcript failure", () => {
+    expect(classificationLabel(note)).toBe("Not classified");
+    expect(classificationLabel({ ...note, classification_status: "pending" })).toBe("Pending");
+    expect(classificationLabel({ ...note, classification_status: "failed" })).toBe("Failed — transcript unaffected");
+    expect(classificationLabel({ ...note, classification_status: "not-applicable" })).toContain("no speech");
+    expect(classificationLabel({ ...note, classification_status: "complete", classification: "note" })).toBe("Note");
+    expect(classificationLabel({ ...note, classification_status: "complete", classification: "task" })).toBe("Task");
   });
   it("formats durations without decimal noise", () => {
     expect([0, 12.5, 61, 1800, 3601].map(formatDuration)).toEqual([

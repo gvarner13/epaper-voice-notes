@@ -1,5 +1,5 @@
 import { DurableObject } from "cloudflare:workers";
-import { type Env, type Note, HttpError } from "./domain";
+import { CLASSIFIER_MODEL, type ClassificationResult, type Env, type Note, HttpError } from "./domain";
 
 /** One personal-account ledger serializes claims and monthly allowance reservation.
  * No external I/O occurs in transactions. Crashed inference is uncertain, not blindly rebilled.
@@ -62,13 +62,61 @@ export class NotesLedger extends DurableObject<Env> {
     return this.ctx.storage.transaction(async storage => {
       const note = await storage.get<Note>(`note:${id}`);
       if (!note || note.state !== "running" || note.attempt_id !== attemptId) return;
-      if (!result.error) { note.state = "ready"; note.outcome = result.outcome; }
+      if (!result.error) {
+        note.state = "ready"; note.outcome = result.outcome;
+        // Opt in only when publishing a new transcript; existing ready notes are never backfilled.
+        note.classification_status = result.outcome === "no-speech-model-result" ? "not-applicable" : "pending";
+        note.classification_attempts = 0;
+        if (note.classification_status === "pending") note.classification_model = CLASSIFIER_MODEL;
+      }
       else {
         note.error = result.error;
         note.state = result.retryable && note.attempts < Number(this.env.MAX_ATTEMPTS) ? "uploaded" : "failed";
         note.retry_at = Date.now() + 60000 * 2 ** (note.attempts - 1);
       }
       delete note.lease_until;
+      await storage.put(`note:${id}`, note);
+    });
+  }
+  async claimClassification(id: string) {
+    return this.ctx.storage.transaction(async storage => {
+      const note = await storage.get<Note>(`note:${id}`);
+      if (!note || note.state !== "ready" || note.classification_status !== "pending") return null;
+      if (note.classification_attempt_id) {
+        if ((note.classification_lease_until ?? 0) < Date.now()) {
+          note.classification_status = "failed";
+          note.classification_error = "Interrupted classification; inspect before retrying";
+          delete note.classification_lease_until;
+          await storage.put(`note:${id}`, note);
+        }
+        return null;
+      }
+      if (this.env.PROCESSING_ENABLED !== "true" || (note.classification_retry_at ?? 0) > Date.now()) return null;
+      note.classification_attempts = (note.classification_attempts ?? 0) + 1;
+      note.classification_attempt_id = crypto.randomUUID();
+      note.classification_lease_until = Date.now() + 20 * 60000;
+      delete note.classification_error;
+      await storage.put(`note:${id}`, note);
+      return note;
+    });
+  }
+  async finishClassification(id: string, attemptId: string,
+    result: ClassificationResult | { error: string; retryable: boolean }) {
+    return this.ctx.storage.transaction(async storage => {
+      const note = await storage.get<Note>(`note:${id}`);
+      if (!note || note.classification_status !== "pending" || note.classification_attempt_id !== attemptId) return;
+      if ("error" in result) {
+        note.classification_error = result.error;
+        note.classification_status = result.retryable && (note.classification_attempts ?? 0) < 3 ? "pending" : "failed";
+        note.classification_retry_at = Date.now() + 60000 * 2 ** ((note.classification_attempts ?? 1) - 1);
+      } else {
+        Object.assign(note, result);
+        note.classification_status = "complete";
+        delete note.classification_error;
+        delete note.classification_retry_at;
+      }
+      delete note.classification_attempt_id;
+      delete note.classification_lease_until;
       await storage.put(`note:${id}`, note);
     });
   }

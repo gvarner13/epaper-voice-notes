@@ -25,6 +25,11 @@ The app needs Internet access to read cloud data. “Local” describes where th
 - Faithful text, including paragraph breaks, is displayed as text rather than executable HTML. Canonical metadata lives in Recording details and the Markdown download.
 - Copy copies only transcript text. Markdown downloads the unchanged canonical file under its stable recording ID.
 - Processing, queued, paused, failed, uncertain, and model-reported no-speech states are explicit. Reading never retries processing or triggers paid inference.
+- Recording details also shows note/task classification, classifier model, probabilities,
+  and independent pending/failed/not-applicable states when supplied by the API.
+  Older recordings show “Not classified”; classifier failure does not hide transcripts.
+  This pipeline addition is implemented locally but not deployed. See the
+  [classification plan](../docs/plans/transcript-classification.md).
 
 No editing, generated titles, summaries, audio playback, uploads, or cloud mutations are implemented. Loopback access is not an authentication boundary against other software or users on the same computer. Do not expose this development server through a proxy or tunnel.
 
@@ -46,5 +51,6 @@ node --import ./test/fake-cloud.mjs scripts/dev.mjs
 ```
 
 The preload supplies synthetic notes and intercepts only its fake upstream origin. It is never included in the application build. Set `.local/reader-fixture-mode` to `empty`, `list-error`, or `transcript-error`, then Refresh, to exercise failures; an empty file restores normal fixtures. Synthetic request paths are recorded in `.local/reader-fixture-requests.jsonl`.
+The first three fixtures cover Note, Task, and no-speech classification metadata.
 
 Agreed scope: [reader plan](../docs/plans/transcript-reader.md). Domain vocabulary: [glossary](../GLOSSARY.md).

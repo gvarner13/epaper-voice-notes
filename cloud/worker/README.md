@@ -4,6 +4,14 @@ Private originals → R2 audio notification + durable upload outbox → Queue �
 **`xai/grok-stt`** through Cloudflare's AI binding/AI Gateway → raw result + Markdown in R2.
 A SQLite Durable Object serializes recording claims and monthly usage reservations.
 
+**Local implementation, not deployed:** new transcripts can additionally be classified
+as `note` or `task` using `@cf/cloudflare/clef`. Classification has its own durable
+status/retries, never blocks transcript access, and never reruns STT. The recording
+API and canonical Markdown downloads expose its metadata; the reader displays it.
+Existing ready recordings are not automatically backfilled. Paid live validation,
+deployment, and any historical backfill require separate approval. Behavior,
+publication details, cost, and checks: [classification plan](../../docs/plans/transcript-classification.md).
+
 ## Current deployment
 
 The dedicated `epaper-voice-notes` Worker, private R2 bucket, Queue, SQLite ledger,
@@ -53,7 +61,8 @@ only needed to manage/audit the gateway, not to keep these transcripts processin
 
 The selected model is third-party xAI inference routed/billed through Cloudflare,
 not Cloudflare-hosted Whisper. This follows the user's subsequent provider choice.
-No chunking, shortened recording cutoff, summaries, tags, or rewriting stage is added.
+No audio chunking, shortened recording cutoff, summaries, tags, or rewriting stage is added.
+The separately implemented Clef stage assigns only a recording-level note/task label.
 The application upload ceiling is 96,000,044 bytes (50 minutes of device audio),
 **not** a recording cutoff or a proven Grok quality limit. Larger notes stay local
 with an explicit HTTP 413 outcome; this ceiling can be adjusted after platform review.
@@ -146,8 +155,11 @@ paragraph rewriting stage; paragraph quality follows provider output.
   re-inferred. Inspect before explicit manual retry; exactly-once provider billing
   is not promised. Partial provider output is never published as complete.
 - Raw completed results are reused after publication failure; Markdown is canonical.
-  A retry still reserves usage conservatively, even when a persisted result means
+  A transcription retry still reserves usage conservatively, even when a persisted result means
   no inference is necessary. Reservations are never refunded after errors/uncertainty.
+  Classification instead persists its result atomically in the ledger; authenticated
+  Markdown downloads project that metadata into the unchanged base transcript.
+  Direct R2 Markdown reads contain only the base transcript, not current classification metadata.
 - Default monthly reservation cap: **36,000 seconds / 600 minutes**, including retries,
   resets by UTC calendar month. Exhaustion pauses processing, not uploads/capture.
   Disabling processing pauses future claims, not an already-running provider request.
@@ -160,6 +172,11 @@ paragraph rewriting stage; paragraph quality follows provider output.
   accumulating indefinitely because there is no deletion policy. App controls are
   **not a guaranteed $10 provider/account bill cap**. Review account usage and configure
   gateway/provider spend limits before enabling.
+- Clef classification adds separate token-based inference: published **$0.24/million
+  input tokens**, with no output-token charge. It is **not limited by the monthly
+  audio allowance**. Each job has at most three automatic attempts; failed/interrupted
+  calls may still be billed. Successful-call input-token usage is stored in metadata,
+  not a complete provider billing ledger. No classifier inference has been run live.
 
 ## Checks
 

@@ -11,6 +11,13 @@ export interface Recording {
   attempts: number;
   error?: string;
   outcome?: "speech" | "no-speech-model-result";
+  classification_status?: "pending" | "complete" | "failed" | "not-applicable";
+  classification?: "note" | "task";
+  classification_model?: string;
+  classification_probabilities?: { note: number; task: number };
+  classification_input_tokens?: number;
+  classification_attempts?: number;
+  classification_error?: string;
 }
 export type Result<T> = { ok: true; value: T } | { ok: false; error: string };
 export interface Transcript {
@@ -49,6 +56,16 @@ export const states: Record<
       "The processing attempt ended without a confirmed outcome. It has not been automatically restarted.",
   },
 };
+
+export function classificationLabel(recording: Recording) {
+  switch (recording.classification_status) {
+    case "complete": return recording.classification === "task" ? "Task" : recording.classification === "note" ? "Note" : "Not classified";
+    case "pending": return "Pending";
+    case "failed": return "Failed — transcript unaffected";
+    case "not-applicable": return "Not applicable — no speech detected";
+    default: return "Not classified";
+  }
+}
 
 export function recordingDate(recording: Recording) {
   return {

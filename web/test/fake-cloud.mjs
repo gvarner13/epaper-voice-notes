@@ -47,6 +47,12 @@ const notes = states.map((state, index) => ({
         ? "speech"
         : undefined,
   error: state === "failed" ? "Inference HTTP 400" : undefined,
+  classification_status: index < 2 ? "complete" : index === 2 ? "not-applicable" : undefined,
+  classification: index === 0 ? "note" : index === 1 ? "task" : undefined,
+  classification_model: index < 2 ? "@cf/cloudflare/clef" : undefined,
+  classification_probabilities: index === 0 ? { note: 0.95, task: 0.05 } : index === 1 ? { note: 0.1, task: 0.9 } : undefined,
+  classification_input_tokens: index < 2 ? 150 : undefined,
+  classification_attempts: index < 2 ? 1 : index === 2 ? 0 : undefined,
 }));
 const text = [
   "I was thinking about how the best ideas always seem to show up when I’m doing something else. Walking home, making coffee, halfway through a conversation. Never when I’m sitting down trying to have one.\n\nMaybe that’s the whole point of this little recorder. Not to make thinking more productive, but to give those passing thoughts somewhere to land. Before they disappear into the rest of the day.\n\nThere’s something nice about just saying it out loud. No opening an app, no deciding where it belongs. Just a thought, captured as it was. I’d like to keep it that simple.",
@@ -85,7 +91,7 @@ globalThis.fetch = async (input, init) => {
     return new Response("synthetic failure", { status: 503 });
   const index = notes.indexOf(note);
   return new Response(
-    `---\nrecording_id: ${note.id}\noriginal_filename: ${note.filename}\ncaptured_at: ${note.captured_at ?? "null"}\nuploaded_at: ${note.uploaded_at}\nduration_seconds: ${note.duration_seconds}\n---\n\n# ${note.id}\n\n${text[index] ?? ""}\n`,
+    `---\nrecording_id: ${note.id}\noriginal_filename: ${note.filename}\ncaptured_at: ${note.captured_at ?? "null"}\nuploaded_at: ${note.uploaded_at}\nduration_seconds: ${note.duration_seconds}\nclassification_status: ${JSON.stringify(note.classification_status)}\nclassification: ${JSON.stringify(note.classification ?? null)}\nclassification_model: ${JSON.stringify(note.classification_model ?? null)}\nclassification_probabilities: ${JSON.stringify(note.classification_probabilities ?? null)}\n---\n\n# ${note.id}\n\n${text[index] ?? ""}\n`,
     { headers: { "content-type": "text/markdown" } },
   );
 };

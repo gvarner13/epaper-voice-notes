@@ -28,6 +28,14 @@ Production setup/API/recovery: [`cloud/worker/README.md`](cloud/worker/README.md
 
 v1.3 is flashed and the user confirms the screen and physical BOOT recording controls. Remaining checks include human comparison of the spoken transcript, power-button/battery shutdown, network/reboot recovery, SD-full behavior, and the USB end-marker acknowledgment timeout. Full evidence: [Grok results](docs/research/grok-transcription-results.md). Earlier hardware bullets below retain historical snapshots.
 
+## Transcript classification (local implementation)
+
+Clef (`@cf/cloudflare/clef`) can classify new transcripts as `note` or `task`, with
+independent retries and metadata in the API, Markdown download, and reader. Transcript
+text stays unchanged and remains available if classification fails. Existing ready
+recordings are not automatically backfilled. **Not deployed; no paid Clef calls or
+backfill have been run.** Details: [classification plan](docs/plans/transcript-classification.md).
+
 ## Local transcript reader
 
 ```sh

@@ -2,7 +2,7 @@ import { env as runtimeEnv } from "cloudflare:workers";
 import { createMessageBatch } from "cloudflare:test";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import worker from "../src/index";
-import { MODEL, hex, type Env } from "../src/domain";
+import { CLASSIFIER_MODEL, MODEL, hex, type Env } from "../src/domain";
 import { audioUrl } from "../src/security";
 // Runtime bindings are generated; test secrets/config deliberately differ from production literals.
 const env: Env = { ...runtimeEnv, DEVICE_TOKEN: "device-test-token-000000000000000000000",
@@ -30,7 +30,10 @@ async function deliver(recording: string, settings = env) {
 }
 function ai(text: string, state = "Completed") {
   const binding: { run(model: string, input: Record<string, unknown>, options?: AiOptions): Promise<unknown> } = env.AI;
-  return vi.spyOn(binding, "run").mockResolvedValue(Response.json({ state, result: { text, duration: 1 } }));
+  return vi.spyOn(binding, "run").mockImplementation(async model => Response.json(model === CLASSIFIER_MODEL ? {
+    model: "clef", answers: { classification: { type: "choice", choice: "note", confidence: 0.8,
+      probabilities: { note: 0.9, task: 0.1 } } }, usage: { input_tokens: 100, output_tokens: 0 },
+  } : { state, result: { text, duration: 1 } }));
 }
 afterEach(() => vi.restoreAllMocks());
 describe("private whole-file pipeline", () => {
@@ -57,7 +60,8 @@ describe("private whole-file pipeline", () => {
   it("deduplicates concurrent deliveries and publishes Markdown with unknown capture time", async () => {
     const recording = id(); await upload(recording); const inference = ai("These are my original words.");
     await Promise.all([deliver(recording), deliver(recording)]);
-    expect(inference).toHaveBeenCalledTimes(1);
+    expect(inference).toHaveBeenCalledTimes(2);
+    expect(inference.mock.calls[1][0]).toBe(CLASSIFIER_MODEL);
     expect(inference.mock.calls[0][0]).toBe(MODEL);
     expect(inference.mock.calls[0][1]).toMatchObject({ language: "en", filler_words: true });
     const response = await api(`/recordings/${recording}/transcript`, {}, env.READER_TOKEN);
@@ -120,7 +124,8 @@ describe("private whole-file pipeline", () => {
     write.mockRestore();
     vi.spyOn(Date, "now").mockReturnValue(Date.now() + 120000);
     await deliver(recording);
-    expect(inference).not.toHaveBeenCalled();
+    expect(inference).toHaveBeenCalledTimes(1);
+    expect(inference.mock.calls[0][0]).toBe(CLASSIFIER_MODEL);
     expect(await (await api(`/recordings/${recording}/transcript`, {}, env.READER_TOKEN)).text()).toContain("Original persisted result");
   });
   it("handles simultaneous upload retries without replacing audio", async () => {

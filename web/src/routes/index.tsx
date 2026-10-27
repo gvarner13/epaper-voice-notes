@@ -22,6 +22,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { getRecordings, getTranscript } from "@/lib/recordings.functions";
 import {
   RECORDING_ID,
+  classificationLabel,
   formatDate,
   formatDuration,
   recordingDate,
@@ -547,6 +548,31 @@ function TranscriptReader({
             <dt>Processing attempts</dt>
             <dd>{recording.attempts}</dd>
           </div>
+          <div>
+            <dt>Classification</dt>
+            <dd>{classificationLabel(recording)}</dd>
+          </div>
+          {recording.classification_model ? (
+            <div>
+              <dt>Classifier</dt>
+              <dd>{recording.classification_model}</dd>
+            </div>
+          ) : null}
+          {recording.classification_probabilities ? (
+            <div>
+              <dt>Model probabilities</dt>
+              <dd>
+                Note {(recording.classification_probabilities.note * 100).toFixed(1)}%
+                {" · "}Task {(recording.classification_probabilities.task * 100).toFixed(1)}%
+              </dd>
+            </div>
+          ) : null}
+          {recording.classification_error ? (
+            <div>
+              <dt>Classification error</dt>
+              <dd>{recording.classification_error}</dd>
+            </div>
+          ) : null}
         </dl>
       </details>
     </article>

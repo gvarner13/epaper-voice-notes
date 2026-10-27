@@ -1,4 +1,6 @@
-import { HttpError, MODEL, hex, markdown, validId, wavDuration, type Env, type Note } from "./domain";
+import { HttpError, MODEL, ProcessingError, classifiedMarkdown, hex, markdown, transcript, validId, wavDuration, type Env } from "./domain";
+import { classifyRecording } from "./classification";
+export { transcript } from "./domain";
 import { audioUrl, authorized, validAudioUrl } from "./security";
 export { NotesLedger } from "./ledger";
 const json = (value: unknown, status = 200) => Response.json(value, { status, headers: { "cache-control": "no-store" } });
@@ -113,22 +115,12 @@ async function handle(request: Request, env: Env) {
     if (note.state !== "ready") throw new HttpError(409, "Transcript not complete");
     const result = await env.NOTES.get(`transcripts/${id}.md`);
     if (!result) throw new HttpError(503, "Transcript unavailable");
-    return new Response(result.body, { headers: { "content-type": "text/markdown; charset=utf-8", "cache-control": "no-store" } });
+    const body = note.classification_status ? classifiedMarkdown(await result.text(), note) : result.body;
+    return new Response(body, { headers: { "content-type": "text/markdown; charset=utf-8", "cache-control": "no-store" } });
   }
   throw new HttpError(403, "Operation not permitted");
 }
 
-class ProcessingError extends Error {
-  constructor(message: string, readonly retryable: boolean) { super(message); }
-}
-export function transcript(response: unknown): string {
-  if (!response || typeof response !== "object") throw new ProcessingError("Invalid model response", false);
-  // Cloudflare's third-party binding wraps the provider in state/result. Never publish non-completed jobs.
-  if (!("state" in response) || response.state !== "Completed" || !("result" in response) ||
-      !response.result || typeof response.result !== "object" || !("text" in response.result) || typeof response.result.text !== "string")
-    throw new ProcessingError("Model did not return a completed transcript", false);
-  return response.result.text;
-}
 async function process(id: string, env: Env) {
   const note = await ledger(env).claim(id);
   if (!note) return;
@@ -172,7 +164,10 @@ export default {
       const id = body && typeof body === "object" && "id" in body && typeof body.id === "string" ? body.id :
         body && typeof body === "object" && "object" in body && body.object && typeof body.object === "object" &&
         "key" in body.object && typeof body.object.key === "string" ? /^audio\/(.+)\.wav$/.exec(body.object.key)?.[1] : undefined;
-      if (id && validId(id)) await process(id, env);
+      if (id && validId(id)) {
+        await process(id, env);
+        await classifyRecording(id, env);
+      }
       message.ack(); // Durable retry_at/outbox owns application retries, not Queue delivery count.
     }
   },
@@ -181,7 +176,13 @@ export default {
     do {
       const page = await ledger(env).list(after);
       for (const note of page.notes) {
-        if (note.state === "running" && (note.lease_until ?? Infinity) < Date.now()) await ledger(env).claim(note.id);
+        if (note.state === "ready" && note.classification_status === "pending") {
+          if (note.classification_attempt_id && (note.classification_lease_until ?? Infinity) < Date.now())
+            await ledger(env).claimClassification(note.id);
+          else if (env.PROCESSING_ENABLED === "true" && !note.classification_attempt_id &&
+              (note.classification_retry_at ?? 0) <= Date.now()) await env.JOBS.send({ id: note.id });
+        }
+        else if (note.state === "running" && (note.lease_until ?? Infinity) < Date.now()) await ledger(env).claim(note.id);
         else if (env.PROCESSING_ENABLED === "true" && ["uploaded", "paused"].includes(note.state) &&
             (note.retry_at ?? 0) <= Date.now()) await env.JOBS.send({ id: note.id });
       }
